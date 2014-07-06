@@ -30,11 +30,14 @@ http://creativecommons.org/licenses/by/3.0/
       typedef enum _mode {
         MODE_BLACKOUT,       // Blackout
         MODE_ALARM,          // Colors are set to default values read from EEPROM
-        MODE_DIRECTCOLOR,    // Colors are taken from the latest set value
+        MODE_DIRECTCOLOR_RGB,// Colors are taken from the latest RGB set value
+        MODE_DIRECTCOLOR_HSV,// Colors are taken from the latest RGB values read as HSV
         MODE_WRITEDEFAULT,   // Current colors are stored to the EEPROM
-        MODE_STROBE,         // Strobe to latest set colors with par1: tOn and par2: tOff
-        MODE_FLASH,          // Single flash to latest set colors with par1: tO
-        MODE_SWEEPHUE,       // Sweep hue with timebase set by par1
+        MODE_STROBE,         // Strobe to latest set colors with par1: timebase; par2: tOn and par3: tOff
+        MODE_FLASH,          // Single flash to latest set colors with par1: timebase; par2: tO
+        MODE_IDENTIFY,       // Identify this channel (usefull when you have a lot of nodes in DMX)
+        MODE_SWEEPHUE,       // Sweep hue with timebase set by par1; par2: saturation; par3: value
+        MODE_SWEEPSAT,       // Sweep saturation with timebase set by par1: par2: hue; par3: value;
       } mode;
       
       typedef struct _parameters {
@@ -42,7 +45,6 @@ http://creativecommons.org/licenses/by/3.0/
         unsigned char par2; 
         unsigned char par3;
         unsigned char par4;
-        unsigned int hue;
       } parameters;
     
     private:  
@@ -50,6 +52,8 @@ http://creativecommons.org/licenses/by/3.0/
       rgb outColors;
       mode workingMode;
       parameters pars;
+      unsigned char prescaler;
+      unsigned int timer;
       unsigned char id;
       
     public:
@@ -69,7 +73,7 @@ http://creativecommons.org/licenses/by/3.0/
       rgb* getCurrentColors();
       
     private:
-      void preStateChange(mode nextWorkingMode);
+      mode preStateChange(mode nextWorkingMode);
       void postStateChange(mode oldWorkingMode); 
       
       void blackout();

@@ -43,15 +43,19 @@ void Colors::setBlueColor(unsigned char value) {
   inColors.blue = value;
 }
 
-bool Colors::setWorkingMode(mode wMode) {
+bool Colors::setWorkingMode(mode wMode, unsigned char par1, unsigned char par2, unsigned char par3, unsigned char par4) {
 
   // If a new working mode has ben set, reset the internal state machine  
   if (workingMode != wMode) {
     
     // The following operations should be marked as critical section
     noInterrupts();
-      preStateChange(wMode);
-      mode oldMode = workingMode;
+      pars.par1 = par1;
+      pars.par2 = par2;
+      pars.par3 = par3;
+      pars.par4 = par4;
+      mode oldMode = workingMode;      
+      wMode = preStateChange(wMode);
       workingMode = wMode;
       postStateChange(oldMode);
     interrupts();
@@ -62,8 +66,9 @@ bool Colors::setWorkingMode(mode wMode) {
   return false;
 }
 
-bool Colors::setWorkingMode(mode wMode, unsigned char par1, unsigned char par2, unsigned char par3, unsigned char par4) {
-  return setWorkingMode(wMode);
+bool Colors::setWorkingMode(mode wMode) {
+  
+  return setWorkingMode(wMode, 0, 0, 0, 0);
 }
 
 // Interrupt driven
@@ -72,17 +77,73 @@ void Colors::workingTic() {
   switch(workingMode) {
     
     // Copy in buffer to out buffer
-    case MODE_DIRECTCOLOR:
+    case MODE_DIRECTCOLOR_RGB:
       outColors = inColors;
+    break;
+    
+    // RGB are read as HSV
+    case MODE_DIRECTCOLOR_HSV:
+      outColors = hsvToRGB(inColors.red, inColors.green, inColors.blue);
     break;
     
     // Sweep hue based on par1 timing
     case MODE_SWEEPHUE:
-      pars.hue++;
-      if (pars.hue == 360) {
-        pars.hue = 0;
+      prescaler++;
+      if (prescaler > pars.par1) {
+        prescaler = 0;
+        
+        timer++;
+        if (timer == 360) {
+          timer = 0;
+        }
+        outColors = hsvToRGB(timer, pars.par2, pars.par3);        
       }
-      outColors = hsvToRGB(pars.hue, 255, 255);
+    break;
+    
+    case MODE_SWEEPSAT:
+      prescaler++;
+      if (prescaler > pars.par1) {
+        prescaler = 0;
+        
+        timer++;
+        timer = timer & 0x00FF;
+        
+        outColors = hsvToRGB(pars.par2, timer, pars.par3);
+      }
+    break;
+    
+    case MODE_STROBE:
+      prescaler++;
+      if (prescaler > pars.par1) {
+        prescaler = 0;
+        timer++;
+        if (timer == (pars.par2 + pars.par3)) {
+          timer = 0;
+        }
+        
+        if (timer < pars.par2) {
+          // Ton period
+          outColors = inColors;
+        } else {
+          // Toff period
+          blackout();
+      }
+    }
+    break;
+    
+    case MODE_FLASH:
+      prescaler++;
+      if (prescaler > pars.par1) {
+        prescaler = 0;
+        if (timer > 0) {
+          timer--;
+          // Ton period
+          outColors = inColors;
+        } else {
+          // Toff always
+          blackout();
+        }
+      }
     break;
   }
   
@@ -92,7 +153,7 @@ Colors::rgb* Colors::getCurrentColors() {
   return &outColors;
 }
       
-void Colors::preStateChange(mode nextWorkingMode) {
+Colors::mode Colors::preStateChange(mode nextWorkingMode) {
   
   switch(nextWorkingMode) {
     
@@ -108,10 +169,28 @@ void Colors::preStateChange(mode nextWorkingMode) {
       storeDefaultColor();
     break;
     
+    case MODE_IDENTIFY:
+      // Blink each second
+      pars.par1 = 0;
+      pars.par2 = 2;
+      pars.par4 = 8;
+      return MODE_STROBE;
+    break;
+    
+    case MODE_FLASH:
+      prescaler = 0;
+      timer = pars.par2;
+    break;
+    
+    case MODE_STROBE:
     case MODE_SWEEPHUE:
-      pars.hue = 0;
+    case MODE_SWEEPSAT:
+      prescaler = 0;
+      timer = 0;
     break;
   }
+  
+  return nextWorkingMode;
 }
 
 void Colors::postStateChange(mode oldWorkingMode) {
@@ -139,7 +218,7 @@ void Colors::storeDefaultColor() {
 }
 
 Colors::rgb Colors::hsvToRGB(unsigned int hue, unsigned int sat, unsigned int val) {
-  unsigned char r,g,b;
+  unsigned char r = 0,g = 0,b = 0;
   unsigned int H_accent = hue/60;
   unsigned int bottom = ((255 - sat) * val)>>8;
   unsigned int top = val;
