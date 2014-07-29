@@ -90,6 +90,7 @@ void loop()
       // Read data from DMX bus and update the color engines
       unsigned int dmxCh = dmxChannelBase;
       for (unsigned char channel = 0; channel < MAXCHANNELS; channel++) {
+        colorEngine[channel].setBrightness(DMXSerial.read(dmxCh++));
         colorEngine[channel].setRedColor(DMXSerial.read(dmxCh++));
         colorEngine[channel].setGreenColor(DMXSerial.read(dmxCh++));
         colorEngine[channel].setBlueColor(DMXSerial.read(dmxCh++));
@@ -106,16 +107,19 @@ void loop()
     
       // Set color engines in alarm mode
       for (unsigned char channel = 0; channel < MAXCHANNELS; channel++) {
-        colorEngine[channel].setWorkingMode(/*Colors::MODE_ALARM*/Colors::MODE_SWEEPHUE);
+        //colorEngine[channel].setWorkingMode(Colors::MODE_ALARM);
+        colorEngine[channel].setWorkingMode(Colors::MODE_SWEEPHUE, 0, 255, 255, 0);
       }
   }
   
-  // Update the outputs
+  // Update the outputs if needed
   for (unsigned char channel = 0; channel < MAXCHANNELS; channel++) {
-    Colors::rgb *color;
+    rgb *color;
     color = colorEngine[channel].getCurrentColors();
-   
-    ShiftPWM.SetRGB(channel, color->red, color->green, color->blue);
+    
+    if(color->hasChanged()) {
+      ShiftPWM.SetRGB(channel, color->getRed(), color->getGreen(), color->getBlue());
+    }
   }
 }
 

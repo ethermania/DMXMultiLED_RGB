@@ -16,17 +16,12 @@ http://creativecommons.org/licenses/by/3.0/
 #ifndef _COLORS_H_
 #define _COLORS_H_ 
 
+#include "RGB.h"
+
   class Colors {
     
     public:
     
-      // Defines a simple color container
-      typedef struct _rgb {
-        unsigned char red;
-        unsigned char green;
-        unsigned char blue;
-      } rgb;
-      
       typedef enum _mode {
         MODE_BLACKOUT,       // Blackout
         MODE_ALARM,          // Colors are set to default values read from EEPROM
@@ -50,6 +45,7 @@ http://creativecommons.org/licenses/by/3.0/
     private:  
       rgb inColors;
       rgb outColors;
+      unsigned char brightness;
       mode workingMode;
       parameters pars;
       unsigned char prescaler;
@@ -62,6 +58,7 @@ http://creativecommons.org/licenses/by/3.0/
       
       void setId(unsigned char _id);
       
+      void setBrightness(unsigned char value);      
       void setRedColor(unsigned char value);
       void setGreenColor(unsigned char value);
       void setBlueColor(unsigned char value);
@@ -76,10 +73,11 @@ http://creativecommons.org/licenses/by/3.0/
       mode preStateChange(mode nextWorkingMode);
       void postStateChange(mode oldWorkingMode); 
       
-      void blackout();
+      boolean applyBrightness(rgb *colors);
+      void blackout(rgb *colors);
       
-      void getDefaultColor();
-      void storeDefaultColor();
+      void getDefaultColor(rgb *colors);
+      void storeDefaultColor(rgb *colors);
       
       rgb hsvToRGB(unsigned int hue, unsigned int sat, unsigned int val);
   };

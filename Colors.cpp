@@ -31,16 +31,20 @@ void Colors::setId(unsigned char _id) {
   id = _id;
 }
 
+void Colors::setBrightness(unsigned char value) {
+  brightness = value;
+}
+
 void Colors::setRedColor(unsigned char value) {
-  inColors.red = value;
+  inColors.setRed(value);
 }
 
 void Colors::setGreenColor(unsigned char value) {
-  inColors.green = value;
+  inColors.setGreen(value);
 }
 
 void Colors::setBlueColor(unsigned char value) {
-  inColors.blue = value;
+  inColors.setBlue(value);
 }
 
 bool Colors::setWorkingMode(mode wMode, unsigned char par1, unsigned char par2, unsigned char par3, unsigned char par4) {
@@ -79,11 +83,12 @@ void Colors::workingTic() {
     // Copy in buffer to out buffer
     case MODE_DIRECTCOLOR_RGB:
       outColors = inColors;
+      applyBrightness(&outColors);
     break;
     
     // RGB are read as HSV
     case MODE_DIRECTCOLOR_HSV:
-      outColors = hsvToRGB(inColors.red, inColors.green, inColors.blue);
+      outColors = hsvToRGB(inColors.getRed(), inColors.getGreen(), inColors.getBlue());
     break;
     
     // Sweep hue based on par1 timing
@@ -124,9 +129,10 @@ void Colors::workingTic() {
         if (timer < pars.par2) {
           // Ton period
           outColors = inColors;
+          applyBrightness(&outColors);
         } else {
           // Toff period
-          blackout();
+          blackout(&outColors);
       }
     }
     break;
@@ -139,9 +145,10 @@ void Colors::workingTic() {
           timer--;
           // Ton period
           outColors = inColors;
+          applyBrightness(&outColors);          
         } else {
           // Toff always
-          blackout();
+          blackout(&outColors);
         }
       }
     break;
@@ -149,7 +156,7 @@ void Colors::workingTic() {
   
 }
 
-Colors::rgb* Colors::getCurrentColors() {
+rgb* Colors::getCurrentColors() {
   return &outColors;
 }
       
@@ -158,15 +165,15 @@ Colors::mode Colors::preStateChange(mode nextWorkingMode) {
   switch(nextWorkingMode) {
     
     case MODE_BLACKOUT:
-      blackout();
+      blackout(&outColors);
     break;
     
     case MODE_ALARM:
-      getDefaultColor();
+      getDefaultColor(&outColors);
     break;
     
     case MODE_WRITEDEFAULT:
-      storeDefaultColor();
+      storeDefaultColor(&inColors);
     break;
     
     case MODE_IDENTIFY:
@@ -196,28 +203,37 @@ Colors::mode Colors::preStateChange(mode nextWorkingMode) {
 void Colors::postStateChange(mode oldWorkingMode) {
 }
 
-void Colors::blackout() {
-  outColors.red = 0;
-  outColors.green = 0;
-  outColors.blue = 0;
+boolean Colors::applyBrightness(rgb *colors) {
+  
+  colors->setRed((((unsigned int)colors->getRed()) * brightness) >> 8);
+  colors->setGreen((((unsigned int)colors->getGreen()) * brightness) >> 8);
+  colors->setBlue((((unsigned int)colors->getBlue()) * brightness) >> 8);
+  
+  return colors->hasChanged();
+}
+
+void Colors::blackout(rgb *colors) {
+  colors->setRed(0);
+  colors->setGreen(0);
+  colors->setBlue(0);
 }
       
-void Colors::getDefaultColor() {
+void Colors::getDefaultColor(rgb *colors) {
 
   unsigned char address = id << 2;
-  outColors.red = EEPROM.read(address++);
-  outColors.green = EEPROM.read(address++);
-  outColors.blue = EEPROM.read(address);
+  colors->setRed(EEPROM.read(address++));
+  colors->setGreen(EEPROM.read(address++));
+  colors->setBlue(EEPROM.read(address));
 }
 
-void Colors::storeDefaultColor() {
+void Colors::storeDefaultColor(rgb *colors) {
   unsigned char address = id << 2;
-  EEPROM.write(address++, inColors.red);
-  EEPROM.write(address++, inColors.green);
-  EEPROM.write(address++, inColors.blue);
+  EEPROM.write(address++, colors->getRed());
+  EEPROM.write(address++, colors->getGreen());
+  EEPROM.write(address++, colors->getBlue());
 }
 
-Colors::rgb Colors::hsvToRGB(unsigned int hue, unsigned int sat, unsigned int val) {
+rgb Colors::hsvToRGB(unsigned int hue, unsigned int sat, unsigned int val) {
   unsigned char r = 0,g = 0,b = 0;
   unsigned int H_accent = hue/60;
   unsigned int bottom = ((255 - sat) * val)>>8;
@@ -252,9 +268,9 @@ Colors::rgb Colors::hsvToRGB(unsigned int hue, unsigned int sat, unsigned int va
   }  
   
   rgb result;
-  result.red = r;
-  result.green = g;
-  result.blue = b;
+  result.setRed(r);
+  result.setGreen(g);
+  result.setBlue(b);
   
   return result;
 }
