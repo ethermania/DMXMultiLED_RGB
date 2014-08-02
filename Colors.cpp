@@ -89,6 +89,7 @@ void Colors::workingTic() {
     // RGB are read as HSV
     case MODE_DIRECTCOLOR_HSV:
       outColors = hsvToRGB(inColors.getRed(), inColors.getGreen(), inColors.getBlue());
+      applyBrightness(&outColors);      
     break;
     
     // Sweep hue based on par1 timing
@@ -118,22 +119,25 @@ void Colors::workingTic() {
     break;
     
     case MODE_STROBE:
+    case MODE_IDENTIFY:    
       prescaler++;
-      if (prescaler > pars.par1) {
+      if (prescaler >= pars.par1) {
         prescaler = 0;
         timer++;
-        if (timer == (pars.par2 + pars.par3)) {
+        if (timer >= (pars.par2 + pars.par3)) {
+          // Toff period          
           timer = 0;
-        }
-        
-        if (timer < pars.par2) {
-          // Ton period
-          outColors = inColors;
-          applyBrightness(&outColors);
-        } else {
-          // Toff period
           blackout(&outColors);
-      }
+        }
+        if (timer == pars.par2) {
+          // Ton period
+          if (workingMode == MODE_IDENTIFY) {
+            getDefaultColor(&outColors);
+          } else {
+            outColors = inColors;
+            applyBrightness(&outColors);
+          }
+        }
     }
     break;
     
@@ -178,9 +182,9 @@ Colors::mode Colors::preStateChange(mode nextWorkingMode) {
     
     case MODE_IDENTIFY:
       // Blink each second
-      pars.par1 = 0;
-      pars.par2 = 2;
-      pars.par4 = 8;
+      pars.par1 = 2;
+      pars.par2 = 10;
+      pars.par4 = 40;
       return MODE_STROBE;
     break;
     

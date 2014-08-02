@@ -41,7 +41,7 @@ const bool ShiftPWM_balanceLoad = false;
 
 Colors colorEngine[MAXCHANNELS];
 
-unsigned short dmxChannelBase = 10;
+unsigned short dmxChannelBase = 1;
 
 void setup() {
   
@@ -76,7 +76,7 @@ void setup() {
   ShiftPWM.Start(PWMFREQUENCY,MAXBRIGHTNESS);  
   
   // We use the Timer1 for color engine state machine handling
-  Timer1.initialize(100000);  // each 100ms
+  Timer1.initialize(10000);  // each 10ms
   Timer1.attachInterrupt(timer1Callback);
 }
 
@@ -86,7 +86,7 @@ void loop()
   unsigned long lastPacket = DMXSerial.noDataSince();
   
     if (lastPacket < DEFAULTDMXTIMEOUT) {
-
+      
       // Read data from DMX bus and update the color engines
       unsigned int dmxCh = dmxChannelBase;
       for (unsigned char channel = 0; channel < MAXCHANNELS; channel++) {
@@ -95,7 +95,7 @@ void loop()
         colorEngine[channel].setGreenColor(DMXSerial.read(dmxCh++));
         colorEngine[channel].setBlueColor(DMXSerial.read(dmxCh++));
         
-        Colors::mode wMode = (Colors::mode)DMXSerial.read(dmxCh++);
+        Colors::mode wMode = (Colors::mode)(DMXSerial.read(dmxCh++)/10);
         unsigned char par1 = DMXSerial.read(dmxCh++);
         unsigned char par2 = DMXSerial.read(dmxCh++);
         unsigned char par3 = DMXSerial.read(dmxCh++);
@@ -104,14 +104,15 @@ void loop()
       }
       
     } else {
-    
+
       // Set color engines in alarm mode
       for (unsigned char channel = 0; channel < MAXCHANNELS; channel++) {
-        //colorEngine[channel].setWorkingMode(Colors::MODE_ALARM);
-        colorEngine[channel].setWorkingMode(Colors::MODE_SWEEPHUE, 0, 255, 255, 0);
+        colorEngine[channel].setWorkingMode(Colors::MODE_ALARM);
       }
+
   }
   
+
   // Update the outputs if needed
   for (unsigned char channel = 0; channel < MAXCHANNELS; channel++) {
     rgb *color;
@@ -121,6 +122,7 @@ void loop()
       ShiftPWM.SetRGB(channel, color->getRed(), color->getGreen(), color->getBlue());
     }
   }
+
 }
 
 // We use the timer 1 as a clock reference for the color engines
