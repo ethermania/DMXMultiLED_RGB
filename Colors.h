@@ -23,12 +23,9 @@ http://creativecommons.org/licenses/by/3.0/
     public:
     
       typedef enum _mode {
+        MODE_DIRECTCOLOR_RGB,// Colors are taken from the latest RGB set value
         MODE_BLACKOUT,       // Blackout
         MODE_ALARM,          // Colors are set to default values read from EEPROM, at max intensity
-        MODE_DIRECTCOLOR_RGB,// Colors are taken from the latest RGB set value
-        MODE_DIRECTCOLOR_HSV,// Colors are taken from the latest RGB values read as HSV
-        MODE_STROBE,         // Strobe to latest set colors with par1: timebase; par2: tOn and par3: tOff
-        MODE_FLASH,          // Single flash to latest set colors with par1: timebase; par2: tO
         MODE_IDENTIFY,       // Identify this channel (usefull when you have a lot of nodes in DMX)
         MODE_SWEEPHUE,       // Sweep hue with timebase set by par1; par2: saturation; par3: value;
         MODE_SWEEPSAT,       // Sweep saturation with timebase set by par1: par2: hue; par3: value;
@@ -39,17 +36,18 @@ http://creativecommons.org/licenses/by/3.0/
         unsigned char par1;
         unsigned char par2; 
         unsigned char par3;
-        unsigned char par4;
       } parameters;
     
     private:  
       rgb inColors;
       rgb outColors;
       unsigned char brightness;
+      unsigned char strobo;
       mode workingMode;
       parameters pars;
       unsigned char prescaler;
       unsigned int timer;
+      unsigned char tmrstrobo;
       unsigned char id;
       
     public:
@@ -58,13 +56,15 @@ http://creativecommons.org/licenses/by/3.0/
       
       void setId(unsigned char _id);
       
-      void setBrightness(unsigned char value);      
+      void setBrightness(unsigned char value);
+      void setStrobo(unsigned char value);
+      
       void setRedColor(unsigned char value);
       void setGreenColor(unsigned char value);
       void setBlueColor(unsigned char value);
 
       bool setWorkingMode(mode wMode);
-      bool setWorkingMode(mode wMode, unsigned char par1, unsigned char par2, unsigned char par3, unsigned char par4);
+      bool setWorkingMode(mode wMode, unsigned char par1, unsigned char par2, unsigned char par3);
       void workingTic();
       
       rgb* getCurrentColors();
@@ -74,7 +74,9 @@ http://creativecommons.org/licenses/by/3.0/
       void postStateChange(mode oldWorkingMode); 
       
       boolean applyBrightness(rgb *colors);
+      boolean applyStrobo(rgb *colors);
       void blackout(rgb *colors);
+      void full(rgb *colors);
       
       void getDefaultColor(rgb *colors);
       void storeDefaultColor(rgb *colors);

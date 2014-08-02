@@ -94,13 +94,13 @@ void loop()
         colorEngine[channel].setRedColor(DMXSerial.read(dmxCh++));
         colorEngine[channel].setGreenColor(DMXSerial.read(dmxCh++));
         colorEngine[channel].setBlueColor(DMXSerial.read(dmxCh++));
+        colorEngine[channel].setStrobo(DMXSerial.read(dmxCh++));
         
         Colors::mode wMode = (Colors::mode)(DMXSerial.read(dmxCh++)/10);
         unsigned char par1 = DMXSerial.read(dmxCh++);
         unsigned char par2 = DMXSerial.read(dmxCh++);
         unsigned char par3 = DMXSerial.read(dmxCh++);
-        unsigned char par4 = DMXSerial.read(dmxCh++);
-        colorEngine[channel].setWorkingMode(wMode, par1, par2, par3, par4);
+        colorEngine[channel].setWorkingMode(wMode, par1, par2, par3);
       }
       
     } else {

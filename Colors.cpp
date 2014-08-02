@@ -20,7 +20,7 @@ Colors::Colors() {
   
   // Initialize to default parameters
   id = 0;  
-  workingMode = MODE_BLACKOUT;
+  workingMode = MODE_DIRECTCOLOR_RGB;
   preStateChange(workingMode);
 }
 
@@ -35,6 +35,10 @@ void Colors::setBrightness(unsigned char value) {
   brightness = value;
 }
 
+void Colors::setStrobo(unsigned char value) {
+  strobo = value;
+}
+
 void Colors::setRedColor(unsigned char value) {
   inColors.setRed(value);
 }
@@ -47,7 +51,7 @@ void Colors::setBlueColor(unsigned char value) {
   inColors.setBlue(value);
 }
 
-bool Colors::setWorkingMode(mode wMode, unsigned char par1, unsigned char par2, unsigned char par3, unsigned char par4) {
+bool Colors::setWorkingMode(mode wMode, unsigned char par1, unsigned char par2, unsigned char par3) {
 
   // If a new working mode has ben set, reset the internal state machine  
   if (workingMode != wMode) {
@@ -57,7 +61,6 @@ bool Colors::setWorkingMode(mode wMode, unsigned char par1, unsigned char par2, 
       pars.par1 = par1;
       pars.par2 = par2;
       pars.par3 = par3;
-      pars.par4 = par4;
       mode oldMode = workingMode;      
       wMode = preStateChange(wMode);
       workingMode = wMode;
@@ -72,26 +75,28 @@ bool Colors::setWorkingMode(mode wMode, unsigned char par1, unsigned char par2, 
 
 bool Colors::setWorkingMode(mode wMode) {
   
-  return setWorkingMode(wMode, 0, 0, 0, 0);
+  return setWorkingMode(wMode, 0, 0, 0);
 }
 
 // Interrupt driven
 void Colors::workingTic() {
   
+  // Strobo 
+  tmrstrobo++;
+  if (tmrstrobo >= strobo) {
+    tmrstrobo = 0;
+  }
+  
+  // Mode
   switch(workingMode) {
     
     // Copy in buffer to out buffer
     case MODE_DIRECTCOLOR_RGB:
       outColors = inColors;
       applyBrightness(&outColors);
+      applyStrobo(&outColors);
     break;
-    
-    // RGB are read as HSV
-    case MODE_DIRECTCOLOR_HSV:
-      outColors = hsvToRGB(inColors.getRed(), inColors.getGreen(), inColors.getBlue());
-      applyBrightness(&outColors);      
-    break;
-    
+        
     // Sweep hue based on par1 timing
     case MODE_SWEEPHUE:
       prescaler++;
@@ -103,6 +108,7 @@ void Colors::workingTic() {
           timer = 0;
         }
         outColors = hsvToRGB(timer, pars.par2, pars.par3);        
+        applyStrobo(&outColors);        
       }
     break;
     
@@ -115,10 +121,10 @@ void Colors::workingTic() {
         timer = timer & 0x00FF;
         
         outColors = hsvToRGB(pars.par2, timer, pars.par3);
+        applyStrobo(&outColors);
       }
     break;
     
-    case MODE_STROBE:
     case MODE_IDENTIFY:    
       prescaler++;
       if (prescaler >= pars.par1) {
@@ -128,34 +134,13 @@ void Colors::workingTic() {
           // Toff period          
           timer = 0;
           blackout(&outColors);
-        }
-        if (timer == pars.par2) {
+        } else if (timer == pars.par2) {
           // Ton period
-          if (workingMode == MODE_IDENTIFY) {
-            getDefaultColor(&outColors);
-          } else {
-            outColors = inColors;
-            applyBrightness(&outColors);
-          }
+          full(&outColors);
         }
     }
     break;
     
-    case MODE_FLASH:
-      prescaler++;
-      if (prescaler > pars.par1) {
-        prescaler = 0;
-        if (timer > 0) {
-          timer--;
-          // Ton period
-          outColors = inColors;
-          applyBrightness(&outColors);          
-        } else {
-          // Toff always
-          blackout(&outColors);
-        }
-      }
-    break;
   }
   
 }
@@ -184,16 +169,9 @@ Colors::mode Colors::preStateChange(mode nextWorkingMode) {
       // Blink each second
       pars.par1 = 2;
       pars.par2 = 10;
-      pars.par4 = 40;
-      return MODE_STROBE;
+      pars.par3 = 40;
     break;
-    
-    case MODE_FLASH:
-      prescaler = 0;
-      timer = pars.par2;
-    break;
-    
-    case MODE_STROBE:
+        
     case MODE_SWEEPHUE:
     case MODE_SWEEPSAT:
       prescaler = 0;
@@ -216,10 +194,27 @@ boolean Colors::applyBrightness(rgb *colors) {
   return colors->hasChanged();
 }
 
+boolean Colors::applyStrobo(rgb *colors) {
+  
+  if (strobo != 0) {
+    if (tmrstrobo < (strobo>>1)) {
+      blackout(colors);
+    }
+  }
+  
+  return colors->hasChanged();
+}
+
 void Colors::blackout(rgb *colors) {
   colors->setRed(0);
   colors->setGreen(0);
   colors->setBlue(0);
+}
+
+void Colors::full(rgb *colors) {
+  colors->setRed(255);
+  colors->setGreen(255);
+  colors->setBlue(255);
 }
       
 void Colors::getDefaultColor(rgb *colors) {
