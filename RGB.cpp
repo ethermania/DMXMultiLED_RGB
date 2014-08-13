@@ -36,6 +36,7 @@ void rgb::setBlue(unsigned char _blue) {
   if (_blue != blue) {
     changed = true;
   }
+  blue = _blue;
 }
 
 void rgb::setGreen(unsigned char _green) {
